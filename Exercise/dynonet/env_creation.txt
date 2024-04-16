@@ -1,0 +1,9 @@
+conda create --name dl python=3.11
+conda activate dl
+conda install numpy scipy matplotlib jupyter
+conda install pytorch::pytorch torchvision torchaudio -c pytorch # https://pytorch.org/get-started/locally/
+conda install -c conda-forge scikit-learn
+conda install -c conda-forge control
+pip install tqdm
+pip install pytorch-ident
+pip install nonlinear_benchmarks
