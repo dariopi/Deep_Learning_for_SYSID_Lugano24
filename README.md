@@ -15,6 +15,6 @@ Jupyter notebooks related to the exercise sessions can be found in the folder [E
 
 # Software requirements 
 
-We recommend to create a virtual environment in Python following the instructions provided in the document [Instructions.pdf](Instructions.pdf), which refers to the requirements file (requirements.txt) to install all the Python packages needed to solve the exercises.
+We recommend to create a virtual environment in Python following the instructions provided in the document [Instructions.pdf](Instructions.pdf), which refers to the requirements file [requirements.txt](requirements.txt) to install all the Python packages needed to solve the exercises.
 
 
