@@ -3,7 +3,7 @@ This repository contains the material for the course on "Deep Learning for Syste
 
 # Program
 
-The Program of the course can be found in the document [Program](Program.pdf)
+The Program of the course can be found in the document [Program.pdf](Program.pdf)
 
 # Lessons
 
