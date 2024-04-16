@@ -1,8 +1,0 @@
-numpy
-scipy
-matplotlib
-torch
-sklearn
-nonlinear_benchmarks
-pytorch-ident
-tqdm
