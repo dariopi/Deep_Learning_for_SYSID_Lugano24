@@ -3,7 +3,7 @@ This repository contains the material for the course on "Deep Learning for Syste
 
 # Program
 
-The Program of the course can be found in the document [Program.docs]
+The Program of the course can be found in the document Program.docx (Program.docx)
 
 A lot of material on Deep Learning and nueral network can be found at my [book companion website](https://adl.toelt.ai). My book (Applied Deep Learning with TensorFlow 2 published by Springer/APRESS) can be [bought here](https://link.springer.com/book/10.1007/978-1-4842-8020-1).
 
