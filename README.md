@@ -3,8 +3,11 @@ This repository contains the material for the course on "Deep Learning for Syste
 
 # Program
 
-The Program of the course can be found in the document [Program.docx](Program.docx)
+The Program of the course can be found in the document [Program.pdf](Program.pdf)
 
+# Lessons
+
+Slides of the lessons can be found in the folder [lessons](lessons)
 
 # Lecture 1 - 8th April 2024 - Introduction to Neural Networks, Keras and Jupyter Notebooks
 
