@@ -1,5 +1,5 @@
-# Deep Learning for System Identification - April, 22-23, 2024
-This repository contains the material for the course on "Deep Learning for System Identification"
+# Deep Learning for System Identification - Lugano, April, 22-23, 2024
+This repository contains the material for the course on "Deep Learning for System Identification", preciding the [8th Edition of the Workshop on Nonlinear System Identification Benchmarks](https://www.nonlinearbenchmark.org/workshop)
 
 # Program
 
