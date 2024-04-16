@@ -376,54 +376,20 @@ def create_dataset(benchmark, config, file_map, Normalization = True):
 
 if __name__ == "__main__":
 
-    # Maps of benchmarks
-    config = {
-        'CED': {'class': CED_seq, 'params': {'seq_len': 100, 'ind_out': [0, 1, 2]}},
-        'WH2009': {'class': WH2009_seq, 'params': {'seq_len': 188000 - 4}},
-        'F16': {'class': F16DS_seq, 'params': {'seq_len': 24, 'ind_out': [0]}},
-        'SB': {'class': SB_seq, 'params': {'seq_len': 131072}},
-        'SB_MS': {'class': SB_MS_seq, 'params': {'seq_len': 131072}},
-        'CT': {'class': CT_seq, 'params': {'seq_len': 1024}},
-        'EMPS': {'class': EMPS_seq, 'params': {'seq_len': 24841}},
-    }
-
-    file_map = {
-        'CED': '..\\Datasets\\CED\\DATAPRBS.csv',
-        'WH2009': '..\\Datasets\\WH2009\\WienerHammerBenchmark.csv',
-        'F16': '..\\Datasets\\F16\\F16Data_SineSw_Level3.csv',
-        'SB': os.path.join('..', 'Datasets', 'Silverbox', 'SNLS80mV.csv'),
-        'SB_MS': os.path.join('..', 'Datasets', 'Silverbox', 'Schroeder80mV.csv'),
-        'CT': os.path.join('..','Datasets','CascadedTanks','dataBenchmark.csv'),
-        'EMPS': os.path.join('..', 'Datasets', 'EMPS', 'DATA_EMPS.mat')
-    }
 
 
 
-    benchmark = 'SB_MS'  # or 'CED', 'F16'
-    ds_train, mean, std = create_dataset(benchmark, config, file_map,  Normalization=True)
 
-    loader_train = DataLoader(ds_train, shuffle=True, batch_size=2)
+    folder = os.path.join('..', 'Datasets', 'F16')
+    f_train_ds = os.path.join(folder, 'F16Data_SineSw_Level3.csv')
+    f_test_ds = os.path.join(folder, 'F16Data_SineSw_Level4_Validation.csv')
+
+    # create dictionary with training and test dataset
+    dict_ds = {'train': [], 'test': [], }
+    dict_ds['train'] = pd.read_csv(f_train_ds)
+    dict_ds['test'] = pd.read_csv(f_test_ds)
+
+    F16DS_train = F16DS_seq(pd_file=dict_ds['train'][55000:70000], seq_len = 23, ind_out = [0, 1])
+    loader_train = DataLoader(F16DS_train, shuffle=True, batch_size=2)
     u, y = next(iter(loader_train))
     print(u.shape, y.shape)
-    plt.figure()
-    plt.plot(y[0,:,0])
-    plt.show()
-
-
-    #ind_out = 0 # output index (0,1,2)
-    #na = 5 # output lag
-    #nb = 20 # input lag
-    #F16DS_train = F16DS(pd_file=dict_ds['train'], na=na, nb=nb, ind_out=ind_out)
-    #loader_train = DataLoader(F16DS_train, shuffle=True, batch_size=1)
-    #x, y = next(iter(loader_train))
-    #print(x.shape, y.shape)
-
-
-    #F16DS_train = F16DS_seq(pd_file=dict_ds['train'][55000:70000], seq_len = 23, ind_out = [0])
-    #loader_train = DataLoader(F16DS_train, shuffle=True, batch_size=2)
-    #u, y = next(iter(loader_train))
-    #print(u.shape, y.shape)
-
-    #WH2009_train = WH2009_seq(pd_file=dict_ds['train'], seq_len = 188000-4)
-
-
