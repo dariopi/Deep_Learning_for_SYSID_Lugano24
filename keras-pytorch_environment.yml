@@ -1,5 +1,5 @@
 # run: conda env create --file keras-pytorch_environment.yml
-name: keras_pytorch
+name: SYSIDLugano24
 channels:
   - nvidia
   - conda-forge
