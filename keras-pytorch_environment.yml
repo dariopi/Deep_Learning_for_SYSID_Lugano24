@@ -1,0 +1,26 @@
+# run: conda env create --file keras-pytorch_environment.yml
+name: keras_pytorch
+channels:
+  - nvidia
+  - conda-forge
+dependencies:
+  - ipykernel # Support for notebooks in VS Code
+  - ipympl
+  - jupyter
+  - jupyterlab
+  # Keras now supports Torch as backend:
+  # https://keras.io/getting_started/#configuring-your-backend
+  - keras>=3
+  - matplotlib
+  - numpy
+  - pandas
+  - pip
+  - pytorch
+  - scikit-learn
+  - scipy
+  - seaborn
+  - torchinfo # replaces torch-summary, as recommended by authors
+  - tqdm
+ 
+  - pip:
+    - dynonet # Only package not in Conda-Forge
