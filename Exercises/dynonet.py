@@ -3,7 +3,6 @@ Keras implementation of the dynonet
 """
 import os
 
-import keras.saving
 import pandas as pd
 import numpy as np
 
@@ -88,13 +87,18 @@ class MimoLinearDynamicalOperator(keras.layers.Layer):
   def call(self, inputs: keras.KerasTensor):
     u, x0 = inputs
 
+    if self.n_a == 0:
+      return keras.ops.conv(
+          keras.ops.pad(u, [[0, 0], [self.n_b - 1, 0], [0, 0]]),
+          self.b_coeff, padding="valid", data_format="channels_last")
+
     _, filtered_output = jax.lax.scan(self._ar_pply,
                                       [keras.ops.zeros([self.n_b,
                                                         u.shape[0],
                                                         u.shape[-1]]),
                                        keras.ops.transpose(x0, [1, 0, 2])],
                                       keras.ops.transpose(u, [1, 0, 2]),
-                                      unroll=3)
+                                      unroll=self.n_a)
 
     return keras.ops.transpose(filtered_output, [1, 0, 2])
 
@@ -163,7 +167,7 @@ class DynoNet(keras.Model):
 
 
 if __name__ == "__main__":
-  na = 25
+  na = 50
   nb = 100
   test_model = DynoNet(32, 8, 3, na, nb)
 
