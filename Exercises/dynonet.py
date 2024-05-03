@@ -106,8 +106,8 @@ class MimoLinearDynamicalOperator(keras.layers.Layer):
     # Get time-shifted ar coefficients
     a_ss = self._a_ss()
 
-    def a_apply(x0, x):
-      return keras.ops.einsum("sno,bnto->bsto", a_ss, x0) + x
+    def a_apply(x0, b_u):
+      return keras.ops.einsum("sno,bnto->bsto", a_ss, x0) + b_u
 
     y = jax.lax.associative_scan(a_apply, b_u, axis=2)
 
