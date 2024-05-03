@@ -53,7 +53,7 @@ class MimoLinearDynamicalOperator(keras.layers.Layer):
   """
 
   def __init__(self, out_channels: int = 1,
-               n_b: int = 1, n_a: int = 0,
+               n_b: int = 0, n_a: int = 0,
                **kwargs):
     super(MimoLinearDynamicalOperator, self).__init__(**kwargs)
 
@@ -66,41 +66,52 @@ class MimoLinearDynamicalOperator(keras.layers.Layer):
         [self.n_a, self.out_channels],
         initializer="zeros")
     self.b_coeff = self.add_weight(
-        [self.n_b, input_shape[0][-1], self.out_channels])
+        [self.n_b + 1, input_shape[0][-1], self.out_channels])
 
-  def _ar_pply(self, carry, ut):
-    u0, x0 = carry
-
-    u = keras.ops.concatenate([u0[1:, ...], ut[None, ...]])
-
-    xt = keras.ops.einsum("to,tbo->bo",
-                          keras.ops.flip(self.a_coeff, axis=0),
-                          x0) +\
-        keras.ops.einsum("tio,tbi->bo",
-                         keras.ops.flip(self.b_coeff, axis=0),
-                         u)
-
-    x = keras.ops.concatenate([x0[1:, ...], xt[None, ...]])
-
-    return [u, x], xt
+  def _a_ss(self) -> keras.KerasTensor:
+    return keras.ops.stack([
+        keras.ops.pad(self.a_coeff[idx:, :], [[idx, 0], [0, 0]])
+        for idx in range(self.n_a)
+    ], axis=0)
 
   def call(self, inputs: keras.KerasTensor):
     u, x0 = inputs
 
+    # Calculate effect of input over output
+    b_u = keras.ops.conv(
+        keras.ops.pad(u, [[0, 0], [self.n_b, 0], [0, 0]]),
+        self.b_coeff, padding="valid", data_format="channels_last")
+
+    # Early return if non-ar
     if self.n_a == 0:
-      return keras.ops.conv(
-          keras.ops.pad(u, [[0, 0], [self.n_b - 1, 0], [0, 0]]),
-          self.b_coeff, padding="valid", data_format="channels_last")
+      return b_u
 
-    _, filtered_output = jax.lax.scan(self._ar_pply,
-                                      [keras.ops.zeros([self.n_b,
-                                                        u.shape[0],
-                                                        u.shape[-1]]),
-                                       keras.ops.transpose(x0, [1, 0, 2])],
-                                      keras.ops.transpose(u, [1, 0, 2]),
-                                      unroll=self.n_a)
+    # Apply effect of first iteration
+    b_u = keras.ops.concatenate([
+        (b_u[:, 0, :] + keras.ops.einsum("to,bto->bo",
+                                           keras.ops.flip(self.a_coeff, axis=0),
+                                           x0))[:, None, :],
+        b_u[:, 1:, :]
+    ], axis=1)
 
-    return keras.ops.transpose(filtered_output, [1, 0, 2])
+    # Turn time-shifts into states + context
+    b_u = keras.ops.stack([
+        keras.ops.concatenate([
+            x0[:, self.n_a - idx:, :],
+            b_u[:, idx:, :]
+        ], axis=1)
+        for idx in range(self.n_a)
+    ], axis=1)
+
+    # Get time-shifted ar coefficients
+    a_ss = self._a_ss()
+
+    def a_apply(x0, x):
+      return keras.ops.einsum("sno,bnto->bsto", a_ss, x0) + x
+
+    y = jax.lax.associative_scan(a_apply, b_u, axis=2)
+
+    return y[:, 0, ...]
 
 
 @keras.saving.register_keras_serializable(package="dynonet")
