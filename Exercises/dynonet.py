@@ -7,7 +7,11 @@ import pandas as pd
 import numpy as np
 
 import keras
+from keras import layers, ops
+from keras import KerasTensor as Tensor
+
 import jax
+from jax import lax
 
 import matplotlib.pyplot as plt
 from sklearn.metrics import root_mean_squared_error, r2_score
@@ -47,7 +51,7 @@ class F16DsSeq():
 
 
 @keras.saving.register_keras_serializable(package="dynonet")
-class MimoLinearDynamicalOperator(keras.layers.Layer):
+class MimoLinearDynamicalOperator(layers.Layer):
   """
   Apply MIMO filter
   """
@@ -68,18 +72,18 @@ class MimoLinearDynamicalOperator(keras.layers.Layer):
     self.b_coeff = self.add_weight(
         [self.n_b + 1, input_shape[0][-1], self.out_channels])
 
-  def _a_ss(self) -> keras.KerasTensor:
-    return keras.ops.stack([
-        keras.ops.pad(self.a_coeff[idx:, :], [[idx, 0], [0, 0]])
+  def _a_ss(self) -> Tensor:
+    return ops.stack([
+        ops.pad(self.a_coeff[idx:, :], [[idx, 0], [0, 0]])
         for idx in range(self.n_a)
     ], axis=0)
 
-  def call(self, inputs: keras.KerasTensor):
+  def call(self, inputs: Tensor):
     u, x0 = inputs
 
     # Calculate effect of input over output
-    b_u = keras.ops.conv(
-        keras.ops.pad(u, [[0, 0], [self.n_b, 0], [0, 0]]),
+    b_u = ops.conv(
+        ops.pad(u, [[0, 0], [self.n_b, 0], [0, 0]]),
         self.b_coeff, padding="valid", data_format="channels_last")
 
     # Early return if non-ar
@@ -87,16 +91,16 @@ class MimoLinearDynamicalOperator(keras.layers.Layer):
       return b_u
 
     # Apply effect of first iteration
-    b_u = keras.ops.concatenate([
-        (b_u[:, 0, :] + keras.ops.einsum("to,bto->bo",
-                                           keras.ops.flip(self.a_coeff, axis=0),
-                                           x0))[:, None, :],
+    b_u = ops.concatenate([
+        (b_u[:, 0, :] + ops.einsum("to,bto->bo",
+                                   ops.flip(self.a_coeff, axis=0),
+                                   x0))[:, None, :],
         b_u[:, 1:, :]
     ], axis=1)
 
     # Turn time-shifts into states + context
-    b_u = keras.ops.stack([
-        keras.ops.concatenate([
+    b_u = ops.stack([
+        ops.concatenate([
             x0[:, self.n_a - idx:, :],
             b_u[:, idx:, :]
         ], axis=1)
@@ -107,9 +111,9 @@ class MimoLinearDynamicalOperator(keras.layers.Layer):
     a_ss = self._a_ss()
 
     def a_apply(x0, b_u):
-      return keras.ops.einsum("sno,bnto->bsto", a_ss, x0) + b_u
+      return ops.einsum("sno,bnto->bsto", a_ss, x0) + b_u
 
-    y = jax.lax.associative_scan(a_apply, b_u, axis=2)
+    y = lax.associative_scan(a_apply, b_u, axis=2)
 
     return y[:, 0, ...]
 
@@ -132,8 +136,8 @@ class DynoNet(keras.Model):
 
     self.g1 = MimoLinearDynamicalOperator(encoding_depth, n_b, n_a)
     self.f = keras.Sequential([
-        keras.layers.Dense(hidden_size, activation="sigmoid"),
-        keras.layers.Dense(encoding_depth)
+        layers.Dense(hidden_size, activation="sigmoid"),
+        layers.Dense(encoding_depth)
     ])
     self.g2 = MimoLinearDynamicalOperator(output_size, n_b, n_a)
     self.g_lin = MimoLinearDynamicalOperator(output_size, n_b, n_a)
@@ -165,7 +169,7 @@ class DynoNet(keras.Model):
     x0_shape = list(x0.shape)
     x0_shape[-2] = self.n_a
     x0_shape[-1] = self.encoding_depth
-    x0_aux = keras.ops.zeros(x0_shape)
+    x0_aux = ops.zeros(x0_shape)
 
     x = self.g1([x, x0_aux])
 
