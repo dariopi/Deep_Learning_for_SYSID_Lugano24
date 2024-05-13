@@ -107,6 +107,7 @@ class LinearDynamicalSS(layers.Layer):
         constraint=Clip(
             ops.log(-ops.log(rmax)),
             ops.log(-ops.log(rmin)),
+            0.8
         ))
 
     def theta_init(shape, dtype="float32"):
@@ -116,7 +117,8 @@ class LinearDynamicalSS(layers.Layer):
         [n_x], initializer=theta_init,
         constraint=Clip(
             None,
-            ops.log(max_phase)
+            ops.log(max_phase),
+            0.8
         ))
 
     def gamma_init(shape, dtype="float32"):
@@ -128,7 +130,8 @@ class LinearDynamicalSS(layers.Layer):
         [n_x], initializer=gamma_init,
         constraint=Clip(
             ops.log(ops.sqrt(1. - rmax**2)),
-            ops.log(ops.sqrt(1. - rmin**2))
+            ops.log(ops.sqrt(1. - rmin**2)),
+            0.8
         ))
 
   def build(self, input_shape):
@@ -373,7 +376,7 @@ class DynoNet(Model):
 
 if __name__ == "__main__":
   mode = SystemMode.SS
-  na = 50
+  na = 25
   nb = 0
   test_model = DynoNet(32, 8, 3, na, nb, system_mode=mode)
 
@@ -416,7 +419,7 @@ if __name__ == "__main__":
   test_model.compile("adam", "mse")
   test_model.fit(F16DS_train.u,
                  F16DS_train.y,
-                 batch_size=batch_size, epochs=64)
+                 batch_size=batch_size, epochs=256)
 
   if mode == SystemMode.TF:
     print(f"Linear AR weights:\n{
