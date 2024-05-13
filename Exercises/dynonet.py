@@ -13,7 +13,7 @@ from keras import layers, ops, constraints, initializers
 from keras import KerasTensor as Tensor
 from keras import Sequential, Model, Input
 
-import jax
+from jax import numpy as jnp
 from jax import lax
 
 import matplotlib.pyplot as plt
@@ -47,10 +47,10 @@ class F16DsSeq():
       x_0 = np.stack([pd_file[variable].to_numpy()[
           adv_idx[:, :ar_order] - ar_order]
           for variable in output_names], axis=-1)
-      self.u = [jax.numpy.asarray(x), jax.numpy.asarray(x_0)]
+      self.u = [jnp.asarray(x), jnp.asarray(x_0)]
     else:
-      self.u = [jax.numpy.asarray(x), jax.numpy.zeros_like(y)[:, :ar_order, :]]
-    self.y = jax.numpy.asarray(y)
+      self.u = [jnp.asarray(x), jnp.zeros_like(y)[:, :ar_order, :]]
+    self.y = jnp.asarray(y)
 
 
 @keras.saving.register_keras_serializable(package="dynonet")
@@ -70,8 +70,8 @@ class Clip(constraints.Constraint):
   """Clips the value between a minimum and a maximum"""
 
   def __init__(self, min_value, max_value, rate: float = 1.):
-    self.min_value = min_value or -jax.numpy.inf
-    self.max_value = max_value or jax.numpy.inf
+    self.min_value = min_value or -jnp.inf
+    self.max_value = max_value or jnp.inf
     self.rate = rate
 
   def __call__(self, w):
@@ -89,14 +89,14 @@ class LinearDynamicalSS(layers.Layer):
                n_x: int = 0,
                rmin: float = 0.0,
                rmax: float = 1.0,
-               max_phase: float = jax.numpy.pi,
+               max_phase: float = jnp.pi,
                **kwargs):
     super(LinearDynamicalSS, self).__init__(**kwargs)
 
     self.out_channels = out_channels
     self.n_x = n_x
 
-    def nu_init(shape, dtype=jax.numpy.float32):
+    def nu_init(shape, dtype="float32"):
       aux = initializers.RandomUniform(0., 1.)(shape, dtype)
       return ops.cast(
           ops.log(
@@ -109,7 +109,7 @@ class LinearDynamicalSS(layers.Layer):
             ops.log(-ops.log(rmin)),
         ))
 
-    def theta_init(shape, dtype=jax.numpy.float32):
+    def theta_init(shape, dtype="float32"):
       aux = initializers.RandomUniform(0., 1.)(shape, dtype)
       return ops.cast(ops.log(max_phase * aux), dtype)
     self.theta_log = self.add_weight(
@@ -119,7 +119,7 @@ class LinearDynamicalSS(layers.Layer):
             ops.log(max_phase)
         ))
 
-    def gamma_init(shape, dtype=jax.numpy.float32):
+    def gamma_init(shape, dtype="float32"):
       lambda_mag = ops.exp(-ops.exp(self.nu_log))
       return ops.cast(
           ops.log(ops.sqrt(ops.ones(shape) - ops.square(lambda_mag))),
@@ -186,7 +186,7 @@ class LinearDynamicalSS(layers.Layer):
     imag_part = ops.einsum(
         subscripts, ops.real(op1), ops.imag(op2)
     ) + ops.einsum(
-        subscripts, ops.real(op1), ops.imag(op2)
+        subscripts, ops.imag(op1), ops.real(op2)
     )
     return real_part + imag_part * 1j
 
@@ -199,7 +199,7 @@ class LinearDynamicalSS(layers.Layer):
       return d_u
 
     # Initial state estimation (Past input assumed to be 0)
-    c_a_pinv = jax.numpy.linalg.pinv(
+    c_a_pinv = jnp.linalg.pinv(
         self.complex_einsum("ij,jk->ik", c, ops.diag(a))
     )
     x0 = self.complex_einsum(
@@ -373,7 +373,7 @@ class DynoNet(Model):
 
 if __name__ == "__main__":
   mode = SystemMode.SS
-  na = 20
+  na = 50
   nb = 0
   test_model = DynoNet(32, 8, 3, na, nb, system_mode=mode)
 
@@ -427,11 +427,11 @@ if __name__ == "__main__":
         np.mean(np.abs(np.array(test_model.g2.a_coeff)), axis=-1)}")
   elif mode == SystemMode.SS:
     print(f"Linear AR weights:\n{
-        np.array(test_model.g_lin._ss_params()[0])}")
+        np.array(test_model.g_lin.ss_params()[0])}")
     print(f"Non-Linear AR weights 1:\n{
-        np.array(test_model.g1._ss_params()[0])}")
+        np.array(test_model.g1.ss_params()[0])}")
     print(f"Non-Linear AR weights 2:\n{
-        np.array(test_model.g2._ss_params()[0])}")
+        np.array(test_model.g2.ss_params()[0])}")
 
   test_model.save("./dynonet.keras")
   test_model = keras.saving.load_model("./dynonet.keras")
