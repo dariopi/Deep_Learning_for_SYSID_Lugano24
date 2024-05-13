@@ -162,7 +162,7 @@ class LinearDynamicalSS(layers.Layer):
             stddev=1. / np.sqrt(n_u)
         ))
 
-  def _ss_params(self):
+  def ss_params(self):
     lambda_mag = ops.exp(-ops.exp(self.nu_log))
     lambda_phase = ops.exp(self.theta_log)
 
@@ -176,34 +176,55 @@ class LinearDynamicalSS(layers.Layer):
 
     return lambda_cx, b_matrix, c_matrix, self.d.value
 
+  @staticmethod
+  def complex_einsum(subscripts: str, op1: Tensor, op2: Tensor) -> Tensor:
+    real_part = ops.einsum(
+        subscripts, ops.real(op1), ops.real(op2)
+    ) - ops.einsum(
+        subscripts, ops.imag(op1), ops.imag(op2)
+    )
+    imag_part = ops.einsum(
+        subscripts, ops.real(op1), ops.imag(op2)
+    ) + ops.einsum(
+        subscripts, ops.real(op1), ops.imag(op2)
+    )
+    return real_part + imag_part * 1j
+
   def call(self, inputs):
     u, y0 = inputs
-    a, b, c, d = self._ss_params()
+    a, b, c, d = self.ss_params()
 
     d_u = ops.einsum("oi,bti->bto", d, u)
     if self.n_x == 0:
       return d_u
 
     # Initial state estimation (Past input assumed to be 0)
-    c_a_pinv = jax.numpy.linalg.pinv(ops.matmul(c, ops.diag(a)))
-    x0 = ops.einsum("so,bo->bs", c_a_pinv,
-                    y0[:, -1, :] - ops.einsum("oi,bi->bo",
-                                              d + ops.matmul(c, b),
-                                              ops.zeros_like(u[:, 0, :])
-                                              ))
+    c_a_pinv = jax.numpy.linalg.pinv(
+        self.complex_einsum("ij,jk->ik", c, ops.diag(a))
+    )
+    x0 = self.complex_einsum(
+        "so,bo->bs",
+        c_a_pinv,
+        y0[:, -1, :] - self.complex_einsum(
+            "oi,bi->bo",
+            d + self.complex_einsum(
+                "ij,jk->ik", c, b
+            ),
+            ops.zeros_like(u[:, 0, :]))
+    )
 
     # Calculate the effect of input over states
     b_u = ops.concatenate([
-        (ops.einsum("si,bi->bs", b, u[:, 0, :])
-         + ops.einsum("s,bs->bs", a, x0))[:, None, :],
-        ops.einsum("si,bti->bts", b, u[:, 1:, :])
+        (self.complex_einsum("si,bi->bs", b, u[:, 0, :])
+         + self.complex_einsum("s,bs->bs", a, x0))[:, None, :],
+        self.complex_einsum("si,bti->bts", b, u[:, 1:, :])
     ], axis=1)
 
     def a_apply(x0, b_u):
       return x0 * a[None, None, :] + b_u
 
     x = lax.associative_scan(a_apply, b_u, axis=1)
-    y = ops.einsum("os,bts->bto", c, x) + d_u
+    y = self.complex_einsum("os,bts->bto", c, x) + d_u
 
     self.add_loss(ops.mean(ops.square(ops.imag(y))))
 
